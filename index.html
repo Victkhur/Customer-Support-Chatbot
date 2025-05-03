@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Support Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 h-screen flex flex-col font-sans">
+    <!-- Header -->
+    <header class="bg-blue-600 text-white p-4 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5v-4a2 2 0 012-2h10a2 2 0 012 2v4h-4m-2 0v-6"></path>
+            </svg>
+            <h1 class="text-lg font-semibold">Customer Support Chat</h1>
+            <span class="bg-green-200 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">Online</span>
+        </div>
+        <button class="text-white hover:text-gray-200" onclick="alert('Help options coming soon!')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+        </button>
+    </header>
+
+    <!-- Chat Area -->
+    <div class="flex-1 p-4 overflow-y-auto" id="chat-container">
+        <div id="chat-messages" class="space-y-3">
+            <!-- Initial Bot Message -->
+            <div class="flex items-start space-x-2">
+                <div class="bg-blue-50 text-gray-800 p-3 rounded-lg max-w-xs">
+                    <strong>Bot:</strong> Hello! I'm here to assist you. How may I help you today?
+                </div>
+            </div>
+            <!-- Quick Reply Buttons -->
+            <div class="flex flex-wrap gap-2">
+                <button onclick="sendMessage('Track my order')" class="border border-blue-500 text-blue-500 px-3 py-1 rounded-lg hover:bg-blue-50">Track Order</button>
+                <button onclick="sendMessage('I want to return an item')" class="border border-blue-500 text-blue-500 px-3 py-1 rounded-lg hover:bg-blue-50">Returns</button>
+                <button onclick="sendMessage('Tell me about your products')" class="border border-blue-500 text-blue-500 px-3 py-1 rounded-lg hover:bg-blue-50">Product Info</button>
+                <button onclick="sendMessage('Shipping details')" class="border border-blue-500 text-blue-500 px-3 py-1 rounded-lg hover:bg-blue-50">Shipping</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="p-4 bg-white border-t border-gray-300">
+        <div class="flex items-center space-x-2">
+            <input type="text" id="user-input" class="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type your message...">
+            <button onclick="sendMessage()" class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let lastMessage = null;
+
+        function connectWebSocket() {
+            console.log("Attempting to connect to WebSocket...");
+            ws = new WebSocket("ws://localhost:8000/ws/chat");
+            
+            ws.onopen = function() {
+                console.log("WebSocket connected successfully");
+                addMessage("System", "Connected to chatbot!", "bg-gray-100");
+            };
+
+            ws.onmessage = function(event) {
+                console.log("Received message:", event.data);
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.escalation) {
+                        addMessage("System", data.message, "bg-yellow-100");
+                    } else {
+                        addMessage("Bot", data.message, "bg-blue-50");
+                    }
+                } catch (e) {
+                    console.error("Error parsing message:", e);
+                    addMessage("System", "Error processing response", "bg-red-100");
+                }
+            };
+
+            ws.onerror = function(error) {
+                console.error("WebSocket error:", error);
+                addMessage("System", "Connection error. Retrying...", "bg-red-100");
+            };
+
+            ws.onclose = function() {
+                console.log("WebSocket closed. Reconnecting...");
+                setTimeout(connectWebSocket, 1000);
+            };
+        }
+
+        function sendMessage(predefinedMessage = null) {
+            const input = document.getElementById("user-input");
+            const message = predefinedMessage || input.value.trim();
+            if (message && ws && ws.readyState === WebSocket.OPEN) {
+                console.log("Sending message:", message);
+                addMessage("You", message, "bg-green-100", "justify-end");
+                ws.send(JSON.stringify({ message }));
+                lastMessage = message;
+                if (!predefinedMessage) input.value = "";
+            } else {
+                console.error("Cannot send message: WebSocket not connected or empty message");
+                addMessage("System", "Cannot send message. Please try again.", "bg-red-100");
+            }
+        }
+
+        function addMessage(sender, message, bgClass, alignClass = "justify-start") {
+            const chatMessages = document.getElementById("chat-messages");
+            const messageDiv = document.createElement("div");
+            messageDiv.className = `flex ${alignClass} space-x-2`;
+            const innerDiv = document.createElement("div");
+            innerDiv.className = `p-3 rounded-lg ${bgClass} text-gray-800 max-w-xs`;
+            innerDiv.innerHTML = `<strong>${sender}:</strong> ${message}`;
+            messageDiv.appendChild(innerDiv);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        document.getElementById("user-input").addEventListener("keypress", function(e) {
+            if (e.key === "Enter") sendMessage();
+        });
+
+        connectWebSocket();
+    </script>
+</body>
+</html>
