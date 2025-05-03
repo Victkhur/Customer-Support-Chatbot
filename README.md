@@ -24,8 +24,8 @@ A scalable, user-friendly chatbot designed to enhance customer service by provid
 ### 1. Clone the Repository
 Clone this repository to your local machine:
 ```bash
-git clone <repository-url>
-cd <repository-name>
+git clone https://github.com/Victkhur/Customer-Support-Chatbot
+cd Customer-Support-Chatbot
 ```
 
 ### 2. Set Up a Virtual Environment
